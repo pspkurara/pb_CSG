@@ -114,8 +114,7 @@ namespace Parabox.CSG
                         if ((ti | tj) == EPolygonType.Spanning)
                         {
                             float t = (this.w - Vector3.Dot(this.normal, vi.position)) / Vector3.Dot(this.normal, vj.position - vi.position);
-
-                            CSG_Vertex v = CSG_VertexUtility.Mix(vi, vj, t);
+                            CSG_Vertex v = CSG_Vertex.Interpolate(vi, vj, t);
 
                             f.Add(v);
                             b.Add(v);
@@ -124,12 +123,12 @@ namespace Parabox.CSG
 
                     if (f.Count >= 3)
                     {
-                        front.Add(new CSG_Polygon(f, polygon.material));
+                        front.Add( new CSG_Polygon(f, polygon.subMeshIndex) );
                     }
 
                     if (b.Count >= 3)
                     {
-                        back.Add(new CSG_Polygon(b, polygon.material));
+                        back.Add( new CSG_Polygon(b, polygon.subMeshIndex) );
                     }
                 }
                 break;

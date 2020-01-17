@@ -10,13 +10,13 @@ namespace Parabox.CSG
     {
         public List<CSG_Vertex> vertices;
         public CSG_Plane plane;
-        public Material material;
+        public int subMeshIndex;
 
-        public CSG_Polygon(List<CSG_Vertex> list, Material mat)
+        public CSG_Polygon(List<CSG_Vertex> list, int subMeshIndex)
         {
             vertices = list;
             plane = new CSG_Plane(list[0].position, list[1].position, list[2].position);
-            material = mat;
+            this.subMeshIndex = subMeshIndex;
         }
 
         public void Flip()

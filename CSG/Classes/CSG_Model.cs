@@ -1,7 +1,5 @@
-using System;
 using UnityEngine;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Parabox.CSG
 {
@@ -10,130 +8,145 @@ namespace Parabox.CSG
     /// </summary>
     public sealed class CSG_Model
     {
-        internal List<CSG_Vertex> vertices;
-        List<Material> m_Materials;
-        List<List<int>> m_Indices;
-
-        public List<Material> materials
-        {
-            get { return m_Materials; }
-            set { m_Materials = value; }
-        }
-
-        public Mesh mesh
-        {
-            get { return (Mesh)this; }
-        }
+        public List<CSG_Vertex> vertices;
+        public List<List<int>> indices;
 
         public CSG_Model()
         {
-            vertices = new List<CSG_Vertex>();
-            m_Indices = new List<List<int>>();
-        }
-
-        public CSG_Model(GameObject gameObject) :
-            this(gameObject.GetComponent<MeshFilter>()?.sharedMesh,
-                gameObject.GetComponent<MeshRenderer>()?.sharedMaterials,
-                gameObject.GetComponent<Transform>())
-        {
+            this.vertices = new List<CSG_Vertex>();
+            this.indices = new List<List<int>>();
         }
 
         /// <summary>
-        /// Initialize a Model from a UnityEngine.Mesh and transform.
+        /// Initialize a CSG_Model with the mesh of a gameObject.
         /// </summary>
-        public CSG_Model(Mesh mesh, Material[] materials, Transform transform)
+        /// <param name="go"></param>
+        public CSG_Model(GameObject go)
         {
-            if(mesh == null)
-                throw new ArgumentNullException("mesh");
+            vertices = new List<CSG_Vertex>();
 
-            if(transform == null)
-                throw new ArgumentNullException("transform");
+            Mesh m = go.GetComponent<MeshFilter>().sharedMesh;
+            Transform trans = go.GetComponent<Transform>();
 
-            vertices = CSG_VertexUtility.GetVertices(mesh).Select(x => transform.TransformVertex(x)).ToList();
-            m_Materials = new List<Material>(materials);
-            m_Indices = new List<List<int>>();
+            int vertexCount = m.vertexCount;
+            
+            Vector3[] v = m.vertices;
+            Vector3[] n = m.normals;
+            Vector2[] u = m.uv;
+            Color[] c = m.colors;
 
-            for (int i = 0, c = mesh.subMeshCount; i < c; i++)
-            {
-                if (mesh.GetTopology(i) != MeshTopology.Triangles)
-                    continue;
-                var indices = new List<int>();
-                mesh.GetIndices(indices, i);
-                m_Indices.Add(indices);
+            for(int i = 0; i < v.Length; i++)
+                vertices.Add( new CSG_Vertex(trans.TransformPoint(v[i]), trans.TransformDirection(n[i]), u == null || u.Length != vertexCount ? Vector2.zero : u[i], c == null || c.Length != vertexCount ? Color.white : c[i]) );
+
+            indices = new List<List<int>>();
+            for(int i = 0; i < m.subMeshCount; i++){
+                indices.Add(new List<int>(m.GetTriangles(i)));
             }
         }
 
-        internal CSG_Model(List<CSG_Polygon> list)
+        /// <summary>
+        /// Initialize a CSG_Model with a list of CSG_Polygons.
+        /// </summary>
+        /// <param name="list"></param>
+        public CSG_Model(List<CSG_Polygon> list)
         {
-            vertices = new List<CSG_Vertex>();
-            Dictionary<Material, List<int>> submeshes = new Dictionary<Material, List<int>>();
+            this.vertices = new List<CSG_Vertex>();
+            this.indices = new List<List<int>>();
 
             int p = 0;
-
             for (int i = 0; i < list.Count; i++)
             {
                 CSG_Polygon poly = list[i];
-                List<int> indices;
+                if(this.indices.Count <= poly.subMeshIndex)
+                {
+                    this.indices.Add(new List<int>());
+                }
 
-                if (!submeshes.TryGetValue(poly.material, out indices))
-                    submeshes.Add(poly.material, indices = new List<int>());
+                int subMeshIndex = poly.subMeshIndex;
 
                 for (int j = 2; j < poly.vertices.Count; j++)
                 {
-                    vertices.Add(poly.vertices[0]);
-                    indices.Add(p++);
+                    this.vertices.Add(poly.vertices[0]);        
+                    this.indices[subMeshIndex].Add(p++);
 
-                    vertices.Add(poly.vertices[j - 1]);
-                    indices.Add(p++);
+                    this.vertices.Add(poly.vertices[j - 1]);    
+                    this.indices[subMeshIndex].Add(p++);
 
-                    vertices.Add(poly.vertices[j]);
-                    indices.Add(p++);
+                    this.vertices.Add(poly.vertices[j]);        
+                    this.indices[subMeshIndex].Add(p++);
                 }
             }
-
-            m_Materials = submeshes.Keys.ToList();
-            m_Indices = submeshes.Values.ToList();
         }
 
-        internal List<CSG_Polygon> ToPolygons()
+        /// <summary>
+        /// Converts a CSG_Model to a list of CSG_Polygons.
+        /// </summary>
+        /// <returns></returns>
+        public List<CSG_Polygon> ToPolygons()
         {
             List<CSG_Polygon> list = new List<CSG_Polygon>();
 
-            for (int s = 0, c = m_Indices.Count; s < c; s++)
+            for (int i = 0; i < indices.Count; i++)
             {
-                var indices = m_Indices[s];
-
-                for (int i = 0, ic = indices.Count; i < indices.Count; i += 3)
+                for (int i2 = 0; i2 < indices[i].Count; i2+= 3)
                 {
                     List<CSG_Vertex> triangle = new List<CSG_Vertex>()
                     {
-                        vertices[indices[i + 0]],
-                        vertices[indices[i + 1]],
-                        vertices[indices[i + 2]]
+                        vertices[indices[i][i2+0]],
+                        vertices[indices[i][i2+1]],
+                        vertices[indices[i][i2+2]]
                     };
 
-                    list.Add(new CSG_Polygon(triangle, m_Materials[s]));
+                    list.Add(new CSG_Polygon(triangle, i));
                 }
             }
 
             return list;
         }
 
-        public static explicit operator Mesh(CSG_Model model)
+        /// <summary>
+        /// Converts a CSG_Model to a Unity mesh.
+        /// </summary>
+        /// <returns></returns>
+        public Mesh ToMesh(Transform trans = null)
         {
-            var mesh = new Mesh();
-            CSG_VertexUtility.SetMesh(mesh, model.vertices);
-            mesh.subMeshCount = model.m_Indices.Count;
-            for (int i = 0, c = mesh.subMeshCount; i < c; i++)
+            Mesh m = new Mesh();
+
+            int vc = vertices.Count;
+
+            Vector3[] v = new Vector3[vc];
+            Vector3[] n = new Vector3[vc];
+            Vector2[] u = new Vector2[vc];
+            Color[] c = new Color[vc];
+
+            for(int i = 0; i < vc; i++)
             {
-#if UNITY_2019_3_OR_NEWER
-                mesh.SetIndices(model.m_Indices[i], MeshTopology.Triangles, i);
-#else
-                mesh.SetIndices(model.m_Indices[i].ToArray(), MeshTopology.Triangles, i);
-#endif
+                v[i] = trans ? trans.worldToLocalMatrix.MultiplyPoint(this.vertices[i].position) : this.vertices[i].position;
+                n[i] = trans ? trans.worldToLocalMatrix.MultiplyVector(this.vertices[i].normal) : this.vertices[i].normal;
+                u[i] = this.vertices[i].uv;
+                c[i] = this.vertices[i].color;
             }
 
-            return mesh;
+            m.vertices = v;
+            m.normals = n;
+            m.colors = c;
+            m.uv = u;
+            m.subMeshCount = indices.Count;
+
+            for(int i = 0; i < indices.Count; i++){
+                m.SetTriangles(indices[i].ToArray(),i);
+            }
+
+            if (trans)
+            {
+                List<Vector4> tangents = new List<Vector4>();
+                m.GetTangents(tangents);
+                tangents = tangents.ConvertAll<Vector4>((t)=>{return trans.worldToLocalMatrix.MultiplyPoint(t);});
+                m.SetTangents(tangents);
+            } 
+            m.RecalculateBounds();
+
+            return m;
         }
     }
 }

@@ -33,7 +33,7 @@ namespace Parabox.CSG
         /// <param name="lhs">The base mesh of the boolean operation.</param>
         /// <param name="rhs">The input mesh of the boolean operation.</param>
         /// <returns>A new mesh if the operation succeeds, or null if an error occurs.</returns>
-        public static CSG_Model Union(GameObject lhs, GameObject rhs)
+        public static Mesh Union(GameObject lhs, GameObject rhs, Transform worldTransform = null)
         {
             CSG_Model csg_model_a = new CSG_Model(lhs);
             CSG_Model csg_model_b = new CSG_Model(rhs);
@@ -43,7 +43,9 @@ namespace Parabox.CSG
 
             List<CSG_Polygon> polygons = CSG_Node.Union(a, b).AllPolygons();
 
-            return new CSG_Model(polygons);
+            CSG_Model result = new CSG_Model(polygons);
+
+            return result.ToMesh(worldTransform);
         }
 
         /// <summary>
@@ -52,7 +54,7 @@ namespace Parabox.CSG
         /// <param name="lhs">The base mesh of the boolean operation.</param>
         /// <param name="rhs">The input mesh of the boolean operation.</param>
         /// <returns>A new mesh if the operation succeeds, or null if an error occurs.</returns>
-        public static CSG_Model Subtract(GameObject lhs, GameObject rhs)
+        public static Mesh Subtract(GameObject lhs, GameObject rhs, Transform worldTransform = null)
         {
             CSG_Model csg_model_a = new CSG_Model(lhs);
             CSG_Model csg_model_b = new CSG_Model(rhs);
@@ -62,7 +64,9 @@ namespace Parabox.CSG
 
             List<CSG_Polygon> polygons = CSG_Node.Subtract(a, b).AllPolygons();
 
-            return new CSG_Model(polygons);
+            CSG_Model result = new CSG_Model(polygons);
+
+            return result.ToMesh(worldTransform);
         }
 
         /// <summary>
@@ -71,7 +75,7 @@ namespace Parabox.CSG
         /// <param name="lhs">The base mesh of the boolean operation.</param>
         /// <param name="rhs">The input mesh of the boolean operation.</param>
         /// <returns>A new mesh if the operation succeeds, or null if an error occurs.</returns>
-        public static CSG_Model Intersect(GameObject lhs, GameObject rhs)
+        public static Mesh Intersect(GameObject lhs, GameObject rhs, Transform worldTransform = null)
         {
             CSG_Model csg_model_a = new CSG_Model(lhs);
             CSG_Model csg_model_b = new CSG_Model(rhs);
@@ -81,7 +85,9 @@ namespace Parabox.CSG
 
             List<CSG_Polygon> polygons = CSG_Node.Intersect(a, b).AllPolygons();
 
-            return new CSG_Model(polygons);
+            CSG_Model result = new CSG_Model(polygons);
+
+            return result.ToMesh(worldTransform);
         }
     }
 }
