@@ -119,6 +119,22 @@ namespace Parabox.CSG
             return list;
         }
 
+        /// <summary>
+        /// Convert to local vertex position.
+        /// </summary>
+        public void ConvertLocalVertex(Transform worldTransform)
+        {
+
+            if (worldTransform == null)
+                throw new ArgumentNullException("worldTransform");
+
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                vertices[i].position = worldTransform.worldToLocalMatrix.MultiplyPoint(vertices[i].position);
+                vertices[i].normal = worldTransform.worldToLocalMatrix.MultiplyVector(vertices[i].normal);
+            }
+        }
+
         public static explicit operator Mesh(CSG_Model model)
         {
             var mesh = new Mesh();
