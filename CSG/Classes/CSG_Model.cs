@@ -120,19 +120,25 @@ namespace Parabox.CSG
         }
 
         /// <summary>
-        /// Convert to local vertex position.
+        /// Get local vertex mesh from world transform.
         /// </summary>
-        public void ConvertLocalVertex(Transform worldTransform)
+        public Mesh GetLocalMesh(Transform worldTransform)
         {
-
             if (worldTransform == null)
                 throw new ArgumentNullException("worldTransform");
 
+            List<CSG_Vertex> cachedVert = vertices.ToList();
             for (int i = 0; i < vertices.Count; i++)
             {
-                vertices[i].position = worldTransform.worldToLocalMatrix.MultiplyPoint(vertices[i].position);
-                vertices[i].normal = worldTransform.worldToLocalMatrix.MultiplyVector(vertices[i].normal);
+                var vert = vertices[i];
+                vert.position = worldTransform.worldToLocalMatrix.MultiplyPoint(vert.position);
+                vert.normal = worldTransform.worldToLocalMatrix.MultiplyVector(vert.normal);
+                vertices[i] = vert;
             }
+
+            var mesh = this.mesh;
+            vertices = cachedVert;
+            return mesh;
         }
 
         public static explicit operator Mesh(CSG_Model model)
