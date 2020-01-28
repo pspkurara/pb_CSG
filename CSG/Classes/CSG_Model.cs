@@ -31,17 +31,28 @@ namespace Parabox.CSG
             m_Indices = new List<List<int>>();
         }
 
-        public CSG_Model(GameObject gameObject) :
-            this(gameObject.GetComponent<MeshFilter>()?.sharedMesh,
-                gameObject.GetComponent<MeshRenderer>()?.sharedMaterials,
-                gameObject.GetComponent<Transform>())
+        public CSG_Model(GameObject gameObject)
         {
+            if (gameObject == null)
+                throw new ArgumentNullException("gameObject");
+
+            var filter = gameObject.GetComponent<MeshFilter>();
+            var renderer = gameObject.GetComponent<MeshRenderer>();
+            var mesh = filter ? filter.sharedMesh : null;
+            var materials = renderer ? renderer.sharedMaterials : null;
+            Initialize(mesh, materials, gameObject.transform);
         }
 
         /// <summary>
         /// Initialize a Model from a UnityEngine.Mesh and transform.
         /// </summary>
         public CSG_Model(Mesh mesh, Material[] materials, Transform transform)
+        {
+            Initialize(mesh, materials, transform);
+        }
+
+
+        void Initialize(Mesh mesh, Material[] materials, Transform transform)
         {
             if(mesh == null)
                 throw new ArgumentNullException("mesh");
@@ -50,8 +61,8 @@ namespace Parabox.CSG
                 throw new ArgumentNullException("transform");
 
             vertices = CSG_VertexUtility.GetVertices(mesh).Select(x => transform.TransformVertex(x)).ToList();
-            m_Materials = new List<Material>(materials);
-            m_Indices = new List<List<int>>();
+            m_Materials = materials != null ? new List<Material>(materials) : new List<Material>();
+			m_Indices = new List<List<int>>();
 
             for (int i = 0, c = mesh.subMeshCount; i < c; i++)
             {
@@ -63,6 +74,8 @@ namespace Parabox.CSG
             }
         }
 
+
+
         internal CSG_Model(List<CSG_Polygon> list)
         {
             vertices = new List<CSG_Vertex>();
@@ -73,6 +86,9 @@ namespace Parabox.CSG
             for (int i = 0; i < list.Count; i++)
             {
                 CSG_Polygon poly = list[i];
+
+				if (poly.material == null) continue;
+
                 List<int> indices;
 
                 if (!submeshes.TryGetValue(poly.material, out indices))
@@ -102,6 +118,7 @@ namespace Parabox.CSG
             for (int s = 0, c = m_Indices.Count; s < c; s++)
             {
                 var indices = m_Indices[s];
+				var material = m_Materials.Count > s ? m_Materials[s] : null;
 
                 for (int i = 0, ic = indices.Count; i < indices.Count; i += 3)
                 {
@@ -112,7 +129,7 @@ namespace Parabox.CSG
                         vertices[indices[i + 2]]
                     };
 
-                    list.Add(new CSG_Polygon(triangle, m_Materials[s]));
+                    list.Add(new CSG_Polygon(triangle, material));
                 }
             }
 
